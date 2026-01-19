@@ -1,0 +1,7 @@
+//arch = zynq; split = false; format = BIN
+the_ROM_image:
+{
+	[bootloader]C:\Vivado2019\rs_xip_test\sdk_ocm\FSBL\Debug\FSBL.elf
+	C:\Vivado2019\rs_xip_test\sdk_ocm\system_top_wrapper_hw_platform_0\system_top_wrapper.bit
+	C:\Vivado2019\rs_xip_test\sdk_ocm\app_sw\Debug\app_sw.elf
+}
