@@ -11,33 +11,36 @@
 /*******************************************************************/
 
 _STACK_SIZE = DEFINED(_STACK_SIZE) ? _STACK_SIZE : 0x2000;
-_HEAP_SIZE = DEFINED(_HEAP_SIZE) ? _HEAP_SIZE : 0x2000;
+_HEAP_SIZE  = DEFINED(_HEAP_SIZE)  ? _HEAP_SIZE  : 0x2000;
 
-_ABORT_STACK_SIZE = DEFINED(_ABORT_STACK_SIZE) ? _ABORT_STACK_SIZE : 1024;
+_ABORT_STACK_SIZE      = DEFINED(_ABORT_STACK_SIZE)      ? _ABORT_STACK_SIZE      : 1024;
 _SUPERVISOR_STACK_SIZE = DEFINED(_SUPERVISOR_STACK_SIZE) ? _SUPERVISOR_STACK_SIZE : 2048;
-_IRQ_STACK_SIZE = DEFINED(_IRQ_STACK_SIZE) ? _IRQ_STACK_SIZE : 1024;
-_FIQ_STACK_SIZE = DEFINED(_FIQ_STACK_SIZE) ? _FIQ_STACK_SIZE : 1024;
-_UNDEF_STACK_SIZE = DEFINED(_UNDEF_STACK_SIZE) ? _UNDEF_STACK_SIZE : 1024;
+_IRQ_STACK_SIZE        = DEFINED(_IRQ_STACK_SIZE)        ? _IRQ_STACK_SIZE        : 1024;
+_FIQ_STACK_SIZE        = DEFINED(_FIQ_STACK_SIZE)        ? _FIQ_STACK_SIZE        : 1024;
+_UNDEF_STACK_SIZE      = DEFINED(_UNDEF_STACK_SIZE)      ? _UNDEF_STACK_SIZE      : 1024;
 
 /* Define Memories in the system */
 
 MEMORY
 {
-   ps7_ddr_0 : ORIGIN = 0x100000, LENGTH = 0x3FF00000
-   ps7_qspi_linear_0 : ORIGIN = 0xFC000000, LENGTH = 0x1000000
-   ps7_ram_0 : ORIGIN = 0x0, LENGTH = 0x30000
-   ps7_ram_1 : ORIGIN = 0xFFFF0000, LENGTH = 0xFE00
+   ps7_ddr_0          : ORIGIN = 0x00100000, LENGTH = 0x3FF00000
+	ps7_qspi_linear_0 : ORIGIN = 0xFC400000, LENGTH = 0x00C00000
+   ps7_ram_0          : ORIGIN = 0x00000000, LENGTH = 0x00030000
+   ps7_ram_1          : ORIGIN = 0xFFFF0000, LENGTH = 0x0000FE00
 }
 
 /* Specify the default entry point to the program */
-
 ENTRY(_vector_table)
 
 /* Define the sections, and where they are mapped in memory */
-
 SECTIONS
 {
-.text : {
+/* ============================================================
+ *  XIP REGION (QSPI linear): code + rodata + init/fini arrays
+ * ============================================================ */
+
+.text :
+{
    KEEP (*(.vectors))
    *(.boot)
    *(.text)
@@ -53,15 +56,18 @@ SECTIONS
    *(.gnu.linkonce.armextab.*)
 } > ps7_qspi_linear_0
 
-.init : {
+.init :
+{
    KEEP (*(.init))
 } > ps7_qspi_linear_0
 
-.fini : {
+.fini :
+{
    KEEP (*(.fini))
 } > ps7_qspi_linear_0
 
-.rodata : {
+.rodata :
+{
    __rodata_start = .;
    *(.rodata)
    *(.rodata.*)
@@ -69,14 +75,112 @@ SECTIONS
    __rodata_end = .;
 } > ps7_qspi_linear_0
 
-.rodata1 : {
+.rodata1 :
+{
    __rodata1_start = .;
    *(.rodata1)
    *(.rodata1.*)
    __rodata1_end = .;
 } > ps7_qspi_linear_0
 
-.sdata2 : {
+.ctors :
+{
+   __CTOR_LIST__ = .;
+   ___CTORS_LIST___ = .;
+   KEEP (*crtbegin.o(.ctors))
+   KEEP (*(EXCLUDE_FILE(*crtend.o) .ctors))
+   KEEP (*(SORT(.ctors.*)))
+   KEEP (*(.ctors))
+   __CTOR_END__ = .;
+   ___CTORS_END___ = .;
+} > ps7_qspi_linear_0
+
+.dtors :
+{
+   __DTOR_LIST__ = .;
+   ___DTORS_LIST___ = .;
+   KEEP (*crtbegin.o(.dtors))
+   KEEP (*(EXCLUDE_FILE(*crtend.o) .dtors))
+   KEEP (*(SORT(.dtors.*)))
+   KEEP (*(.dtors))
+   __DTOR_END__ = .;
+   ___DTORS_END___ = .;
+} > ps7_qspi_linear_0
+
+.fixup :
+{
+   __fixup_start = .;
+   *(.fixup)
+   __fixup_end = .;
+} > ps7_qspi_linear_0
+
+.eh_frame :
+{
+   *(.eh_frame)
+} > ps7_qspi_linear_0
+
+.eh_framehdr :
+{
+   __eh_framehdr_start = .;
+   *(.eh_framehdr)
+   __eh_framehdr_end = .;
+} > ps7_qspi_linear_0
+
+.gcc_except_table :
+{
+   *(.gcc_except_table)
+} > ps7_qspi_linear_0
+
+.ARM.exidx :
+{
+   __exidx_start = .;
+   *(.ARM.exidx*)
+   *(.gnu.linkonce.armexidix.*.*)
+   __exidx_end = .;
+} > ps7_qspi_linear_0
+
+.preinit_array :
+{
+   __preinit_array_start = .;
+   KEEP (*(SORT(.preinit_array.*)))
+   KEEP (*(.preinit_array))
+   __preinit_array_end = .;
+} > ps7_qspi_linear_0
+
+.init_array :
+{
+   __init_array_start = .;
+   KEEP (*(SORT(.init_array.*)))
+   KEEP (*(.init_array))
+   __init_array_end = .;
+} > ps7_qspi_linear_0
+
+.fini_array :
+{
+   __fini_array_start = .;
+   KEEP (*(SORT(.fini_array.*)))
+   KEEP (*(.fini_array))
+   __fini_array_end = .;
+} > ps7_qspi_linear_0
+
+.ARM.attributes :
+{
+   __ARM.attributes_start = .;
+   *(.ARM.attributes)
+   __ARM.attributes_end = .;
+} > ps7_qspi_linear_0
+
+
+/* ============================================================
+ *  RAM REGION (OCM HIGH): data + bss + mmu table + stacks/heaps
+ *  IMPORTANT: reset location counter to OCM HIGH origin!
+ * ============================================================ */
+
+. = ORIGIN(ps7_ram_1);
+
+/* Small-data 2 (const) */
+.sdata2 :
+{
    __sdata2_start = .;
    *(.sdata2)
    *(.sdata2.*)
@@ -84,7 +188,8 @@ SECTIONS
    __sdata2_end = .;
 } > ps7_ram_1
 
-.sbss2 (NOLOAD) : {
+.sbss2 (NOLOAD) :
+{
    __sbss2_start = .;
    *(.sbss2)
    *(.sbss2.*)
@@ -92,7 +197,9 @@ SECTIONS
    __sbss2_end = .;
 } > ps7_ram_1
 
-.data : {
+/* Initialized data: VMA=OCM high, LMA=QSPI (XIP image) */
+.data :
+{
    __data_start = .;
    *(.data)
    *(.data.*)
@@ -104,7 +211,8 @@ SECTIONS
 } > ps7_ram_1 AT > ps7_qspi_linear_0
 __data_load = LOADADDR(.data);
 
-.data1 : {
+.data1 :
+{
    __data1_start = .;
    *(.data1)
    *(.data1.*)
@@ -112,94 +220,24 @@ __data_load = LOADADDR(.data);
 } > ps7_ram_1 AT > ps7_qspi_linear_0
 __data1_load = LOADADDR(.data1);
 
-.got : {
+/* GOT in RAM (if used) */
+.got :
+{
    *(.got)
 } > ps7_ram_1 AT > ps7_qspi_linear_0
 
-.ctors : {
-   __CTOR_LIST__ = .;
-   ___CTORS_LIST___ = .;
-   KEEP (*crtbegin.o(.ctors))
-   KEEP (*(EXCLUDE_FILE(*crtend.o) .ctors))
-   KEEP (*(SORT(.ctors.*)))
-   KEEP (*(.ctors))
-   __CTOR_END__ = .;
-   ___CTORS_END___ = .;
-} > ps7_qspi_linear_0
-
-.dtors : {
-   __DTOR_LIST__ = .;
-   ___DTORS_LIST___ = .;
-   KEEP (*crtbegin.o(.dtors))
-   KEEP (*(EXCLUDE_FILE(*crtend.o) .dtors))
-   KEEP (*(SORT(.dtors.*)))
-   KEEP (*(.dtors))
-   __DTOR_END__ = .;
-   ___DTORS_END___ = .;
-} > ps7_qspi_linear_0
-
-.fixup : {
-   __fixup_start = .;
-   *(.fixup)
-   __fixup_end = .;
-} > ps7_qspi_linear_0
-
-.eh_frame : {
-   *(.eh_frame)
-} > ps7_qspi_linear_0
-
-.eh_framehdr : {
-   __eh_framehdr_start = .;
-   *(.eh_framehdr)
-   __eh_framehdr_end = .;
-} > ps7_qspi_linear_0
-
-.gcc_except_table : {
-   *(.gcc_except_table)
-} > ps7_qspi_linear_0
-
-.mmu_tbl (ALIGN(16384)) : {
+/* MMU translation table MUST be in RAM and 16KB-aligned */
+.mmu_tbl (NOLOAD) : ALIGN(0x4000)
+{
    __mmu_tbl_start = .;
    *(.mmu_tbl)
+   *(.mmu_tbl.*)
    __mmu_tbl_end = .;
-} > ps7_ram_1 AT > ps7_qspi_linear_0
-__mmu_tbl_load = LOADADDR(.mmu_tbl);
+} > ps7_ram_1
 
-.ARM.exidx : {
-   __exidx_start = .;
-   *(.ARM.exidx*)
-   *(.gnu.linkonce.armexidix.*.*)
-   __exidx_end = .;
-} > ps7_qspi_linear_0
-
-.preinit_array : {
-   __preinit_array_start = .;
-   KEEP (*(SORT(.preinit_array.*)))
-   KEEP (*(.preinit_array))
-   __preinit_array_end = .;
-} > ps7_qspi_linear_0
-
-.init_array : {
-   __init_array_start = .;
-   KEEP (*(SORT(.init_array.*)))
-   KEEP (*(.init_array))
-   __init_array_end = .;
-} > ps7_qspi_linear_0
-
-.fini_array : {
-   __fini_array_start = .;
-   KEEP (*(SORT(.fini_array.*)))
-   KEEP (*(.fini_array))
-   __fini_array_end = .;
-} > ps7_qspi_linear_0
-
-.ARM.attributes : {
-   __ARM.attributes_start = .;
-   *(.ARM.attributes)
-   __ARM.attributes_end = .;
-} > ps7_qspi_linear_0
-
-.sdata : {
+/* Small data in RAM */
+.sdata :
+{
    __sdata_start = .;
    *(.sdata)
    *(.sdata.*)
@@ -208,7 +246,8 @@ __mmu_tbl_load = LOADADDR(.mmu_tbl);
 } > ps7_ram_1 AT > ps7_qspi_linear_0
 __sdata_load = LOADADDR(.sdata);
 
-.sbss (NOLOAD) : {
+.sbss (NOLOAD) :
+{
    __sbss_start = .;
    *(.sbss)
    *(.sbss.*)
@@ -216,7 +255,8 @@ __sdata_load = LOADADDR(.sdata);
    __sbss_end = .;
 } > ps7_ram_1
 
-.tdata : {
+.tdata :
+{
    __tdata_start = .;
    *(.tdata)
    *(.tdata.*)
@@ -225,7 +265,8 @@ __sdata_load = LOADADDR(.sdata);
 } > ps7_ram_1 AT > ps7_qspi_linear_0
 __tdata_load = LOADADDR(.tdata);
 
-.tbss : {
+.tbss (NOLOAD) :
+{
    __tbss_start = .;
    *(.tbss)
    *(.tbss.*)
@@ -233,7 +274,8 @@ __tdata_load = LOADADDR(.tdata);
    __tbss_end = .;
 } > ps7_ram_1
 
-.bss (NOLOAD) : {
+.bss (NOLOAD) :
+{
    __bss_start = .;
    *(.bss)
    *(.bss.*)
@@ -242,13 +284,12 @@ __tdata_load = LOADADDR(.tdata);
    __bss_end = .;
 } > ps7_ram_1
 
-_SDA_BASE_ = __sdata_start + ((__sbss_end - __sdata_start) / 2 );
-
+_SDA_BASE_  = __sdata_start  + ((__sbss_end  - __sdata_start)  / 2 );
 _SDA2_BASE_ = __sdata2_start + ((__sbss2_end - __sdata2_start) / 2 );
 
 /* Generate Stack and Heap definitions */
-
-.heap (NOLOAD) : {
+.heap (NOLOAD) :
+{
    . = ALIGN(16);
    _heap = .;
    HeapBase = .;
@@ -258,30 +299,36 @@ _SDA2_BASE_ = __sdata2_start + ((__sbss2_end - __sdata2_start) / 2 );
    HeapLimit = .;
 } > ps7_ram_1
 
-.stack (NOLOAD) : {
+.stack (NOLOAD) :
+{
    . = ALIGN(16);
    _stack_end = .;
    . += _STACK_SIZE;
    . = ALIGN(16);
    _stack = .;
    __stack = _stack;
+
    . = ALIGN(16);
    _irq_stack_end = .;
    . += _IRQ_STACK_SIZE;
    . = ALIGN(16);
    __irq_stack = .;
+
    _supervisor_stack_end = .;
    . += _SUPERVISOR_STACK_SIZE;
    . = ALIGN(16);
    __supervisor_stack = .;
+
    _abort_stack_end = .;
    . += _ABORT_STACK_SIZE;
    . = ALIGN(16);
    __abort_stack = .;
+
    _fiq_stack_end = .;
    . += _FIQ_STACK_SIZE;
    . = ALIGN(16);
    __fiq_stack = .;
+
    _undef_stack_end = .;
    . += _UNDEF_STACK_SIZE;
    . = ALIGN(16);
@@ -290,4 +337,3 @@ _SDA2_BASE_ = __sdata2_start + ((__sbss2_end - __sdata2_start) / 2 );
 
 _end = .;
 }
-
